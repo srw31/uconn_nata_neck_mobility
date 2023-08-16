@@ -1,0 +1,537 @@
+---
+output:
+  pdf_document:
+    latex_engine: xelatex
+  html_document:
+    df_print: paged
+header-includes: \usepackage{subfig}
+fontsize: 12pt
+mainfont: Calibri
+params:
+  subjID: ""
+---
+
+```{r load_cover_page_data, include = FALSE, echo = FALSE}
+pacman::p_load(here, janitor, lubridate, tidyverse, readr, corrr, ggrepel, paletteer, data.table)
+here()
+wd <- here()
+
+# COLOUR SCHEMES BY TEAM
+UConn_p <- c("#000e2f", "#a2aaad", "#e4002b")
+SHU_p <- c("#ce1141", "#4D4D4F", "#B1B3B6")
+Yale_p <- c("#00365B", "#A9A9A9","#ADB3C1")
+NGU_p <- c("#D60036", "#231F20","#A9A9A9")
+HPU_p <- c("#330072","#818183" ,"#231F20")
+Winthrop_p <- c("#872434", "#FFC82E", "#A9A9A9")
+WFU_p <- c("#9E7E38", "black", "#53565A")
+
+# FILL IN DATA
+reportData <- readRDS(here("data_files/data_for_reports.Rda"))
+reportData <- reportData %>% mutate_at(vars(School), recode, "YALE" = "Yale", "UCONN" = "UConn", "SACRED HEART" = "SHU", "WF" = "WFU")
+
+logoSchool <- reportData %>% filter(ID == params$subjID) %>% distinct(School)
+```
+
+---
+author: ""
+date: ""
+title: "Neck Mobility Study Report for Test Subject | `r reportData %>% filter(ID == params$subjID) %>% distinct(School)`"
+---
+
+```{r logo, echo=FALSE, fig.align = 'center', out.width = '100pt'}
+knitr::include_graphics(here("logos", paste0(logoSchool, ".png")), rel_path = FALSE)
+```
+
+```{css, echo=FALSE, eval = FALSE}
+h3 {
+  text-align: center;
+}
+```
+
+# Evaluation Results
+
+This report has been generated for Test Subject `r reportData %>% filter(ID == params$subjID) %>% distinct(School)` and includes range for motion results for the neck and shoulder. Results are provided from each trial and side of the body (when relevant). All values are in degrees of movement.
+
+# Neck
+The following graphs display neck mobility results. Neck range of motion was measured in six directions: flexion, extension, right/left lateral ('side') flexion, and right/left rotation). An additonal measure of mobility (Cervical Flexion Rotation Test) was also performed. 
+
+## Flexion and Extension
+```{r Pyramid Plots Neck Flex, echo=FALSE, fig.align='center', message=FALSE, warning=FALSE, fig.asp=1, out.height="100%"}
+reportData_long_neck <- reportData %>% select(ID, School, all_of(starts_with("Neck"))) %>% 
+  pivot_longer(!c(ID,School), names_to = "measure", values_to = "val")
+
+reportData_long_neck <- reportData_long_neck %>% mutate(side = case_when(str_detect(measure, pattern = "L") ~ "Left", str_detect(measure, pattern = "R") ~ "Right",
+TRUE ~ "None"), segment = case_when(str_detect(measure, pattern = "1") ~ "Trial 1",
+str_detect(measure, pattern = "2") ~ "Trial 2",  TRUE ~ "Average"), 
+eval = case_when(str_detect(measure, pattern = "Neck_Side") ~ "Neck Side", 
+            str_detect(measure, pattern = "Neck_Rot") ~ "Neck Rotation", 
+            str_detect(measure, pattern = "Neck_Flex") ~ "Neck Flexion", 
+            str_detect(measure, pattern = "Neck_Ext") ~ "Neck Extension"))
+
+reportData_long_neck$measure <- as.factor(reportData_long_neck$measure)
+reportData_long_neck$side <- factor(reportData_long_neck$side, levels = c("Left", "Right", "None"))
+reportData_long_neck$segment <- factor(reportData_long_neck$segment, levels = c("Average", "Trial 2", "Trial 1"))
+reportData_long_neck$eval <- as.factor(reportData_long_neck$eval)
+
+
+nflx <- reportData_long_neck %>%
+  filter(ID == params$subjID & eval == "Neck Flexion")
+
+nflx_p <- ggplot(nflx, aes(
+  x = eval, 
+  y = val,
+  fill = side)) + 
+  geom_bar(stat = "identity") +
+  
+  geom_text(aes(x=eval, y=val, label=paste0(val, "\u00b0")), position = position_stack(vjust = 0.5), size = 4, colour = "white") +
+  theme(legend.position = "none",
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        plot.caption = element_text(size = 10, hjust = 0.5)) +
+        labs(caption = "Neck Flexion") +
+  coord_flip() +
+  facet_wrap(~segment) +
+  scale_fill_manual(values = ifelse(nflx$School == "Yale", Yale_p, 
+                             ifelse(nflx$School == "Winthrop", Winthrop_p,
+                             ifelse(nflx$School == "NGU", NGU_p,
+                             ifelse(nflx$School == "HPU", HPU_p,
+                             ifelse(nflx$School == "WFU", WFU_p,
+                             ifelse(nflx$School == "UConn", UConn_p, SHU_p)))))))
+
+
+ext <- reportData_long_neck %>%
+  filter(ID == params$subjID & eval == "Neck Extension")
+
+ext_p <- ggplot(ext, aes(
+  x = eval, 
+  y = val,
+  fill = side)) + 
+  geom_bar(stat = "identity") +
+  
+  geom_text(aes(x=eval, y=val, label=paste0(val, "\u00b0")), position = position_stack(vjust = 0.5), size = 4, colour = "white") +
+  theme(legend.position = "none",
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        plot.caption = element_text(size = 10, hjust = 0.5)) +
+        labs(caption = "Neck Extension") +
+  coord_flip() +
+  facet_wrap(~segment) +
+  scale_fill_manual(values = ifelse(ext$School == "Yale", Yale_p, 
+                             ifelse(ext$School == "Winthrop", Winthrop_p,
+                             ifelse(ext$School == "NGU", NGU_p,
+                             ifelse(ext$School == "HPU", HPU_p,
+                             ifelse(ext$School == "WFU", WFU_p,
+                             ifelse(ext$School == "UConn", UConn_p, SHU_p)))))))
+
+gridExtra::grid.arrange(nflx_p, ext_p, ncol = 2)
+```
+
+
+```{r Pyramid Plots Neck Ext, eval = FALSE, echo=FALSE, fig.align='center', message=FALSE, warning=FALSE}
+reportData_long_neck <- reportData %>% select(ID, School, all_of(starts_with("Neck"))) %>% 
+  pivot_longer(!c(ID,School), names_to = "measure", values_to = "val")
+
+reportData_long_neck <- reportData_long_neck %>% mutate(side = case_when(str_detect(measure, pattern = "L") ~ "Left", str_detect(measure, pattern = "R") ~ "Right",
+TRUE ~ "None"), segment = case_when(str_detect(measure, pattern = "1") ~ "Trial 1",
+str_detect(measure, pattern = "2") ~ "Trial 2",  TRUE ~ "Average"), 
+eval = case_when(str_detect(measure, pattern = "Neck_Side") ~ "Neck Side", 
+            str_detect(measure, pattern = "Neck_Rot") ~ "Neck Rotation", 
+            str_detect(measure, pattern = "Neck_Flex") ~ "Neck Flexion", 
+            str_detect(measure, pattern = "Neck_Ext") ~ "Neck Extension"))
+
+reportData_long_neck$measure <- as.factor(reportData_long_neck$measure)
+reportData_long_neck$side <- factor(reportData_long_neck$side, levels = c("Left", "Right", "None"))
+reportData_long_neck$segment <- factor(reportData_long_neck$segment, levels = c("Average", "Trial 2", "Trial 1"))
+reportData_long_neck$eval <- as.factor(reportData_long_neck$eval)
+
+
+df <- reportData_long_neck %>%
+  filter(ID == params$subjID & eval == "Neck Extension")
+
+ggplot(df, aes(
+  x = eval, 
+  y = val,
+  fill = side)) + 
+  geom_bar(stat = "identity") +
+  
+  geom_text(aes(x=eval, y=val, label=paste0(val, "\u00b0")), position = position_stack(vjust = 0.5), size = 4, colour = "white") +
+  theme(legend.position = "none",
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  coord_flip() +
+  facet_wrap(~segment) +
+  scale_fill_manual(values = ifelse(df$School == "Yale", Yale_p, 
+                             ifelse(df$School == "Winthrop", Winthrop_p,
+                             ifelse(df$School == "NGU", NGU_p,
+                             ifelse(df$School == "HPU", HPU_p,
+                             ifelse(df$School == "WFU", WFU_p,
+                             ifelse( df$School == "UConn", UConn_p, SHU_p)))))))
+```
+
+## Lateral Flexion and Rotation
+```{r Pyramid Plots Neck Lat Flex, echo=FALSE, fig.align='center', message=FALSE, warning=FALSE, fig.asp=1, out.height="100%"}
+nside <- reportData_long_neck %>%
+  filter(ID == params$subjID & eval == "Neck Side")
+
+nside_p <-  ggplot(nside, aes(
+  x = eval, 
+  y = val,
+  fill = side)) + 
+  geom_bar(stat = "identity") +
+  
+  geom_text(aes(x=eval, y=val, label=paste0(side,":\n",val, "\u00b0")), position = position_stack(vjust = 0.5), size = 4, colour = "white") +
+  theme(legend.position = "none",
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        plot.caption = element_text(size = 10, hjust = 0.5)) +
+        labs(caption = "Lateral Flexion") +
+  coord_flip() +
+  facet_wrap(~segment) +
+  scale_fill_manual(values = ifelse(nside$School == "Yale", Yale_p, 
+                             ifelse(nside$School == "Winthrop", Winthrop_p,
+                             ifelse(nside$School == "NGU", NGU_p,
+                             ifelse(nside$School == "HPU", HPU_p,
+                             ifelse(nside$School == "WFU", WFU_p,
+                             ifelse(nside$School == "UConn", UConn_p, SHU_p)))))))
+
+nrot <- reportData_long_neck %>%
+  filter(ID == params$subjID & eval == "Neck Rotation")
+
+nrot_p <- ggplot(nrot, aes(
+  x = eval, 
+  y = val,
+  fill = side)) + 
+  geom_bar(stat = "identity") +
+  
+  geom_text(aes(x=eval, y=val, label=paste0(side,":\n",val, "\u00b0")), position = position_stack(vjust = 0.5), size = 4, colour = "white") +
+  theme(legend.position = "none",
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        plot.caption = element_text(size = 10, hjust = 0.5)) +
+        labs(caption = "Neck Rotation") +
+  coord_flip() +
+  facet_wrap(~segment) +
+  scale_fill_manual(values = ifelse(nrot$School == "Yale", Yale_p, 
+                             ifelse(nrot$School == "Winthrop", Winthrop_p,
+                             ifelse(nrot$School == "NGU", NGU_p,
+                             ifelse(nrot$School == "HPU", HPU_p,
+                             ifelse(nrot$School == "WFU", WFU_p,
+                             ifelse(nrot$School == "UConn", UConn_p, SHU_p)))))))
+
+gridExtra::grid.arrange(nside_p, nrot_p, nrow = 2)
+```
+
+
+```{r Pyramid Plots Neck Rot, eval = FALSE, echo=FALSE, fig.align='center', message=FALSE, warning=FALSE, fig.asp=1, out.height="50%", fig.nrow = 2}
+df <- reportData_long_neck %>%
+  filter(ID == params$subjID & eval == "Neck Rotation")
+  
+ggplot(df, aes(
+  x = eval, 
+  y = val,
+  fill = side)) + 
+  geom_bar(stat = "identity") +
+  
+  geom_text(aes(x=eval, y=val, label=paste0(side,":\n",val, "\u00b0")), position = position_stack(vjust = 0.5), size = 4, colour = "white") +
+  theme(legend.position = "none",
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  coord_flip() +
+  facet_wrap(~segment) +
+  scale_fill_manual(values = ifelse(df$School == "Yale", Yale_p, 
+                             ifelse(df$School == "Winthrop", Winthrop_p,
+                             ifelse(df$School == "NGU", NGU_p,
+                             ifelse(df$School == "HPU", HPU_p,
+                             ifelse(df$School == "WFU", WFU_p,
+                             ifelse( df$School == "UConn", UConn_p, SHU_p)))))))
+```
+
+## Cervical Flexion-Rotation
+```{r Prep Pyramid Plots CFRT, fig.align='center', echo=FALSE, message=FALSE, warning=FALSE}
+reportData_long_cfrt <- reportData %>% select(ID, School, all_of(starts_with("CFRT"))) %>% pivot_longer(!c(ID, School), names_to = "measure", values_to = "val")
+
+reportData_long_cfrt <- reportData_long_cfrt %>% 
+  mutate(side = case_when(str_detect(measure, pattern = "Left") ~ "Left", 
+                          str_detect(measure, pattern = "Right") ~ "Right", TRUE ~ "None"), segment = case_when(str_detect(measure, pattern = "1") ~ "Trial 1", 
+  str_detect(measure, pattern = "2") ~ "Trial 2",  TRUE ~ "Average"), eval = "Cervical Flexion Rotation")
+
+reportData_long_cfrt$measure <- as.factor(reportData_long_cfrt$measure)
+reportData_long_cfrt$side <- as.factor(reportData_long_cfrt$side)
+reportData_long_cfrt$segment <- as.factor(reportData_long_cfrt$segment)
+reportData_long_cfrt$eval <- as.factor(reportData_long_cfrt$eval)
+
+
+df <- reportData_long_cfrt %>%
+  filter(ID == params$subjID) %>% 
+  mutate(val = ifelse(side == "Left", -1*val, val)) 
+
+ggplot(df, aes(
+  x = eval, 
+  y = val,
+  fill = side)) + 
+  geom_bar(stat = "identity") +
+  
+  geom_text(aes(x=eval, y=val, label=paste0(side,":\n",abs(val), "\u00b0")), position = position_stack(vjust = 0.5), size = 4, colour = "white") +
+  theme(legend.position = "none",
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
+  coord_flip() +
+  facet_wrap(~segment) +
+  scale_fill_manual(values = ifelse(df$School == "Yale", Yale_p, 
+                             ifelse(df$School == "Winthrop", Winthrop_p,
+                             ifelse(df$School == "NGU", NGU_p,
+                             ifelse(df$School == "HPU", HPU_p,
+                             ifelse(df$School == "WFU", WFU_p,
+                             ifelse( df$School == "UConn", UConn_p, SHU_p)))))))
+```
+\pagebreak
+
+# Shoulder
+Range of motion assessment of the left and right shoulder in flexion, external/internal rotation, and horizontal adduction was performed. The total range of motion of the shoulder is the sum of the internal and external rotation values.
+
+
+## Total Range of Motion
+```{r TROM, echo = FALSE, fig.align='center', message = FALSE, warning = FALSE, fig.asp=1, fig.width = 10, fig.height = "100%"}
+reportData_long_shoulder <- reportData %>% select(ID, School, all_of(starts_with("Shoulder"))) %>% pivot_longer(!c(ID,School), names_to = "measure", values_to = "val")
+
+reportData_long_shoulder <- reportData_long_shoulder %>% 
+  mutate(side = case_when(str_detect(measure, pattern = "Left") ~ "Left", 
+                          str_detect(measure, pattern = "Right") ~ "Right", TRUE ~ "None"), segment = case_when(str_detect(measure, pattern = "1") ~ "Trial 1", str_detect(measure, pattern = "2") ~ "Trial 2",  TRUE ~ "Average"), 
+
+eval = case_when(str_detect(measure, pattern = "IR") ~ "Internal Rotation", str_detect(measure, pattern = "ER") ~ "External Rotation", 
+str_detect(measure, pattern = "Flex") ~ "Flexion", 
+str_detect(measure, pattern = "ADD") ~ "Adduction"))
+
+reportData_long_shoulder$measure <- as.factor(reportData_long_shoulder$measure)
+reportData_long_shoulder$side <- as.factor(reportData_long_shoulder$side)
+reportData_long_shoulder$segment <- as.factor(reportData_long_shoulder$segment)
+reportData_long_shoulder$eval <- as.factor(reportData_long_shoulder$eval)
+
+
+for (i in c("Left", "Right")){
+df <- reportData_long_shoulder %>%
+  filter(ID == params$subjID & side == i & segment == "Average" & str_detect(eval, pattern = "Rot")) %>% 
+  mutate(col_val = case_when(School == "SHU" & eval == "Internal Rotation" ~ SHU_p[2],
+                             School == "SHU" & eval == "External Rotation" ~ SHU_p[1],
+                             School == "UConn" & eval == "Internal Rotation" ~ UConn_p[2],
+                             School == "UConn" & eval == "External Rotation" ~ UConn_p[1],
+                             School == "Yale" & eval == "Internal Rotation" ~ Yale_p[2],
+                             School == "Yale" & eval == "External Rotation" ~ Yale_p[1],
+                             School == "HPU" & eval == "Internal Rotation" ~ HPU_p[2],
+                             School == "HPU" & eval == "External Rotation" ~ HPU_p[1],
+                             School == "NGU" & eval == "Internal Rotation" ~ NGU_p[2],
+                             School == "NGU" & eval == "External Rotation" ~ NGU_p[1],
+                             School == "WFU" & eval == "Internal Rotation" ~ WFU_p[2],
+                             School == "WFU" & eval == "External Rotation" ~ WFU_p[1],
+                             School == "Winthrop" & eval == "Internal Rotation" ~ Winthrop_p[2],
+                             School == "Winthrop" & eval == "External Rotation" ~ Winthrop_p[1]
+                             ))
+
+assign(paste0(i, "_plot"), ggplot(df,aes(xmin = 1, xmax = 1.5, ymin = 0, ymax = val[2])) +
+         geom_rect(aes(xmin = 1, xmax = 1.5, ymin = 0, ymax = sum(val)), fill = df$col_val[2]) +
+         geom_rect(fill = df$col_val[1]) + 
+         xlim(c(0, 1.5)) + 
+         ylim(c(0, 360)) +
+         geom_text(aes(x = 0, y = 0, label = paste0("Total Rotation:", sum(val),"\u00b0")),
+                   colour = "black", size = 5, vjust = -1) +
+         geom_text(aes(x = 1.1, y = 0, label = paste0(val[2],"\u00b0")),
+                   colour = "black", size = 4.5, vjust = -3.1, hjust = -2) +
+         geom_text(aes(x = 0, y = 0, label = paste0(val[1],"\u00b0")),
+                   colour = "black", size = 4.5, vjust = -3.1, hjust = -1.5) +
+         geom_text(aes(x = 1.25, y = 0, label = eval[2]),
+                   colour = df$col_val[1], size = 3.5, vjust = 1.1) +
+         geom_text(aes(x = 0, y = 0, label = eval[1]),
+                   colour = df$col_val[2], size = 3.5, vjust = 1.1, hjust = -1) +
+         coord_polar(theta = "y", start = -pi/2) + 
+         #theme_void() +
+         facet_wrap(~ side) +
+         theme(legend.position = "bottom", legend.direction = "horizontal",
+               axis.title.x=element_blank(),
+               axis.text.x=element_blank(),
+               axis.ticks.x=element_blank(),
+               axis.title.y=element_blank(),
+               axis.text.y=element_blank(),
+               axis.ticks.y=element_blank(),
+               strip.text.x.top = element_text(size = 18),
+               panel.background = element_blank()
+
+               )
+               
+)
+}
+gridExtra::grid.arrange(Left_plot, Right_plot, nrow = 2)
+```
+
+
+## Internal and External Rotation
+```{r Prep Pyramid Plots Shoulder, fig.align='center', echo=FALSE, message=FALSE, warning=FALSE, fig.asp=1, out.height="100%"}
+reportData_long_shoulder <- reportData %>% select(ID, School, all_of(starts_with("Shoulder"))) %>% pivot_longer(!c(ID, School), names_to = "measure", values_to = "val")
+
+reportData_long_shoulder <- reportData_long_shoulder %>% 
+  mutate(side = case_when(str_detect(measure, pattern = "Left") ~ "Left", 
+                          str_detect(measure, pattern = "Right") ~ "Right", TRUE ~ "None"), segment = case_when(str_detect(measure, pattern = "1") ~ "Trial 1", str_detect(measure, pattern = "2") ~ "Trial 2",  TRUE ~ "Average"), 
+
+eval = case_when(str_detect(measure, pattern = "IR") ~ "Internal Rotation", str_detect(measure, pattern = "ER") ~ "External Rotation", 
+str_detect(measure, pattern = "Flex") ~ "Flexion", 
+str_detect(measure, pattern = "ADD") ~ "Adduction"))
+
+reportData_long_shoulder$measure <- as.factor(reportData_long_shoulder$measure)
+reportData_long_shoulder$side <- as.factor(reportData_long_shoulder$side)
+reportData_long_shoulder$segment <- as.factor(reportData_long_shoulder$segment)
+reportData_long_shoulder$eval <- as.factor(reportData_long_shoulder$eval)
+
+ir <- reportData_long_shoulder %>%
+  filter(str_detect(measure, "IR")) %>% 
+  filter(ID == params$subjID) %>% 
+  mutate(val = ifelse(side == "Left", -1*val, val)) 
+ir_p <- ggplot(ir, aes(
+  x = eval, 
+  y = val,
+  fill = side)) + 
+  geom_bar(stat = "identity") +
+  
+  geom_text(aes(x=eval, y=val, label=paste0(side,":\n",abs(val),"\u00b0")), position = position_stack(vjust = 0.5), size = 4, colour = "white") +
+  theme(legend.position = "none",
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        plot.caption = element_text(size = 10, hjust = 0.5)) +
+        labs(caption = "Internal Rotation") +
+  coord_flip() +
+  facet_wrap(~segment) +
+  scale_fill_manual(values = ifelse(df$School == "Yale", Yale_p, 
+                             ifelse(df$School == "Winthrop", Winthrop_p,
+                             ifelse(df$School == "NGU", NGU_p,
+                             ifelse(df$School == "HPU", HPU_p,
+                             ifelse(df$School == "WFU", WFU_p,
+                             ifelse( df$School == "UConn", UConn_p, SHU_p)))))))
+
+er <- reportData_long_shoulder %>%
+  filter(str_detect(measure, "ER")) %>% 
+  filter(ID == params$subjID) %>% 
+  mutate(val = ifelse(side == "Left", -1*val, val)) 
+
+er_p <- ggplot(er, aes(
+  x = eval, 
+  y = val,
+  fill = side)) + 
+  geom_bar(stat = "identity") +
+  
+  geom_text(aes(x=eval, y=val, label=paste0(side,":\n",abs(val),"\u00b0")), position = position_stack(vjust = 0.5), size = 4, colour = "white") +
+  theme(legend.position = "none",
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        plot.caption = element_text(size = 10, hjust = 0.5)) +
+        labs(caption = "External Rotation") +
+  coord_flip() +
+  facet_wrap(~segment) +
+  scale_fill_manual(values = ifelse(df$School == "Yale", Yale_p, 
+                             ifelse(df$School == "Winthrop", Winthrop_p,
+                             ifelse(df$School == "NGU", NGU_p,
+                             ifelse(df$School == "HPU", HPU_p,
+                             ifelse(df$School == "WFU", WFU_p,
+                             ifelse( df$School == "UConn", UConn_p, SHU_p)))))))
+
+gridExtra::grid.arrange(er_p, ir_p, nrow = 2)
+```
+
+### Flexion and Adduction
+```{r Pyramid Plots Shoulder Flex, fig.align='center', echo=FALSE, message=FALSE, warning=FALSE, fig.asp=1, out.height = "100%"}
+flx <- reportData_long_shoulder %>%
+  filter(str_detect(measure, "Flex")) %>% 
+  filter(ID == params$subjID) %>% 
+  mutate(val = ifelse(side == "Left", -1*val, val))
+
+flx_p <- ggplot(flx, aes(
+  x = eval, 
+  y = val,
+  fill = side)) + 
+  geom_bar(stat = "identity") +
+  
+  geom_text(aes(x=eval, y=val, label=paste0(side,":\n",abs(val),"\u00b0")), position = position_stack(vjust = 0.5), size = 4, colour = "white") +
+  theme(legend.position = "none",
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        plot.caption = element_text(size = 10, hjust = 0.5)) +
+  
+        labs(caption = "Shoulder Flexion") +
+  coord_flip() +
+  facet_wrap(~segment) +
+  scale_fill_manual(values = ifelse(flx$School == "Yale", Yale_p, 
+                             ifelse(flx$School == "Winthrop", Winthrop_p,
+                             ifelse(flx$School == "NGU", NGU_p,
+                             ifelse(flx$School == "HPU", HPU_p,
+                             ifelse(flx$School == "WFU", WFU_p,
+                             ifelse( flx$School == "UConn", UConn_p, SHU_p)))))))
+
+add <- reportData_long_shoulder %>%
+  filter(str_detect(measure, "ADD")) %>% 
+  filter(ID == params$subjID) %>% 
+  mutate(val = ifelse(side == "Left", -1*val, val))
+
+add_p <- ggplot(add, aes(
+  x = eval, 
+  y = val,
+  fill = side)) + 
+  geom_bar(stat = "identity") +
+  
+  geom_text(aes(x=eval, y=val, label=paste0(side,":\n",abs(val),"\u00b0")), position = position_stack(vjust = 0.5), size = 4, colour = "white") +
+  theme(legend.position = "none",
+        axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        plot.caption = element_text(size = 10, hjust = 0.5))+
+        labs(caption = "Adduction") +
+  coord_flip() +
+  facet_wrap(~segment) +
+  scale_fill_manual(values = ifelse(add$School == "Yale", Yale_p, 
+                             ifelse(add$School == "Winthrop", Winthrop_p,
+                             ifelse(add$School == "NGU", NGU_p,
+                             ifelse(add$School == "HPU", HPU_p,
+                             ifelse(add$School == "WFU", WFU_p,
+                             ifelse( add$School == "UConn", UConn_p, SHU_p)))))))
+
+gridExtra::grid.arrange(flx_p, add_p, nrow = 2)
+```
